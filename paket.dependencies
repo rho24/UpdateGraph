@@ -1,0 +1,7 @@
+source https://api.nuget.org/v3/index.json
+source https://www.nuget.org/api/v2/
+source C:\Users\rich\Documents\GitHub\Glimpse\builds\local
+
+nuget GitVersionTask 3.1.0 framework: >= net452
+nuget Machine.Specifications 0.9.3 framework: >= net452
+nuget Machine.Specifications.Should 0.7.2 framework: >= net452
