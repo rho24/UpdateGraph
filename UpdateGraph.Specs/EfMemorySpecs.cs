@@ -8,6 +8,7 @@ namespace UpdateGraph.Specs
 {
     public class EfMemorySpecs
     {
+        Establish context = () => Db.ClearDb();
         #region Nested type: Db
 
         public class Db : DbContext
@@ -17,13 +18,18 @@ namespace UpdateGraph.Specs
             public Db(DbContextOptions<Db> options)
                 : base(options) {}
 
+            public static void ClearDb() {
+                using(var db = CreateInMemory()) {
+                    db.Database.EnsureDeleted();
+                }
+            }
+
             public static Db CreateInMemory() {
                 var builder = new DbContextOptionsBuilder<Db>();
                 builder.UseInMemoryDatabase(persist: true);
                 var options = builder.Options;
 
                 var db = new Db(options);
-
                 return db;
             }
 
@@ -41,7 +47,24 @@ namespace UpdateGraph.Specs
 
         #endregion
 
-        #region Nested type: When_Using_Seperate_Contexts
+        #region Nested type: When_starting_a_new_spec
+
+        public class When_starting_a_new_spec
+        {
+            static Db.Post _post;
+
+            Because of = () => {
+                using(var db2 = Db.CreateInMemory()) {
+                    _post = db2.Posts.FirstOrDefault();
+                }
+            };
+
+            It Should_Not_Keep_History = () => _post.ShouldBeNull();
+        }
+
+        #endregion
+
+        #region Nested type: When_using_seperate_contexts
 
         public class When_using_seperate_contexts
         {
@@ -53,26 +76,10 @@ namespace UpdateGraph.Specs
 
                     db.SaveChanges();
                 }
-                using (var db2 = Db.CreateInMemory()) {
-                    _post = db2.Posts.FirstOrDefault();
-                }
+                using(var db2 = Db.CreateInMemory()) _post = db2.Posts.FirstOrDefault();
             };
 
             It Should_Keep_History = () => _post.ShouldNotBeNull();
-        }
-
-        public class When_starting_a_new_spec
-        {
-            static Db.Post _post;
-
-            Because of = () => {
-                using (var db2 = Db.CreateInMemory())
-                {
-                    _post = db2.Posts.FirstOrDefault();
-                }
-            };
-
-            It Should_Not_Keep_History = () => _post.ShouldBeNull();
         }
 
         #endregion

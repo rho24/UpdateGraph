@@ -8,6 +8,8 @@ namespace UpdateGraph.Specs
 {
     public class NotRelationshipsSpecs
     {
+        Establish context = () => Db.ClearDb();
+
         #region Nested type: Db
 
         public class Db : DbContext
@@ -16,6 +18,10 @@ namespace UpdateGraph.Specs
 
             public Db(DbContextOptions<Db> options)
                 : base(options) {}
+
+            public static void ClearDb() {
+                using(var db = CreateInMemory()) db.Database.EnsureDeleted();
+            }
 
             public static Db CreateInMemory() {
                 var builder = new DbContextOptionsBuilder<Db>();
@@ -41,7 +47,7 @@ namespace UpdateGraph.Specs
 
         #endregion
 
-        #region Nested type: When_Updating_Exisitng_Entity
+        #region Nested type: When_updating_an_existing_entity
 
         public class When_updating_an_existing_entity
         {
@@ -73,9 +79,10 @@ namespace UpdateGraph.Specs
 
         #endregion
 
-        //public class When_updating_a_new_entity
-        //{
         //    static int postId;
+        //{
+
+        //public class When_updating_a_new_entity
         //    static Db.Post _post;
 
         //    Establish context = () => {
