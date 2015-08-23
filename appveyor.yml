@@ -1,0 +1,13 @@
+install:
+  - choco install gitversion.portable -pre -y
+
+assembly_info:
+  patch: false
+
+before_build:
+  - ps: gitversion /l console /output buildserver /updateAssemblyInfo
+
+after_build:
+  - cmd: ECHO nuget pack UpdateGraph\UpdateGraph.csproj -version "%GitVersion_NuGetVersion%" -prop "target=%CONFIGURATION%"
+  - cmd: nuget pack UpdateGraph\UpdateGraph.csproj -version "%GitVersion_NuGetVersion%" -prop "target=%CONFIGURATION%"
+  - cmd: appveyor PushArtifact "UpdateGraph.%GitVersion_NuGetVersion%.nupkg"
