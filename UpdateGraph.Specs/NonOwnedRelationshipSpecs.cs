@@ -1,8 +1,9 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Machine.Specifications;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
-using System.Collections.Generic;
 
 namespace UpdateGraph.Specs
 {
@@ -15,6 +16,7 @@ namespace UpdateGraph.Specs
         public class Db : DbContext
         {
             public DbSet<Post> Posts { get; set; }
+            public DbSet<Blogger> Bloggers { get; set; }
 
             public Db(DbContextOptions<Db> options)
                 : base(options) {}
@@ -33,13 +35,21 @@ namespace UpdateGraph.Specs
                 return db;
             }
 
-            protected override void OnModelCreating(ModelBuilder modelBuilder)
-            {
-                //modelBuilder.Entity<Post>()
-                //    .Reference(p => p.Blogger)
-                //    .InverseCollection(b => b.Posts)
-                //    .ForeignKey(p => p.BloggerId);
+            protected override void OnModelCreating(ModelBuilder modelBuilder) {
             }
+
+            #region Nested type: Blogger
+
+            public class Blogger
+            {
+                public int Id { get; set; }
+
+                public string Name { get; set; }
+
+                public ICollection<Post> Posts { get; set; }
+            }
+
+            #endregion
 
             #region Nested type: Post
 
@@ -50,18 +60,35 @@ namespace UpdateGraph.Specs
                 public string Name { get; set; }
 
                 public Blogger Blogger { get; set; }
-                //public int BloggerId { get; set; }
-            }
-
-            public class Blogger
-            {
-                public int Id { get; set; }
-                public string Name { get; set; }
-
-                public ICollection<Post> Posts { get; set; }
             }
 
             #endregion
+        }
+
+        #endregion
+
+        #region Nested type: When_updating_a_new_entity
+
+        public class When_updating_a_new_entity
+        {
+            static Db.Post _post;
+
+            static int postId;
+
+            Establish context = () => {
+                using(var db = Db.CreateInMemory()) {
+                    var post = new Db.Post { Name = "New Bob" };
+                    db.UpdateGraph(post);
+
+                    db.SaveChanges();
+
+                    postId = post.Id;
+                }
+            };
+
+            Because of = () => { using(var db = Db.CreateInMemory()) _post = db.Posts.Single(p => p.Id == postId); };
+
+            It Should_Update_Properties = () => _post.Name.ShouldEqual("New Bob");
         }
 
         #endregion
@@ -81,7 +108,7 @@ namespace UpdateGraph.Specs
                     db.Add(post);
 
                     db.SaveChanges();
-                    
+
                     postId = post.Id;
                 }
             };
@@ -95,32 +122,88 @@ namespace UpdateGraph.Specs
                 using(var db = Db.CreateInMemory()) _post = db.Posts.Include(p => p.Blogger).Single(p => p.Id == postId);
             };
 
-            It Should_update_properties = () => _post.Name.ShouldEqual("Changed Name");
             It Should_not_change_the_relationship = () => _post.Blogger.Name.ShouldEqual("Bob");
+
+            It Should_update_properties = () => _post.Name.ShouldEqual("Changed Name");
         }
 
         #endregion
 
-        //    static int postId;
-        //{
 
-        //public class When_updating_a_new_entity
-        //    static Db.Post _post;
+        public class When_updating_a_relationship_with_tracked
+        {
+            static int postId;
+            static Db.Post _post;
 
-        //    Establish context = () => {
-        //        using (var db = Db.CreateInMemory())
-        //        {
-        //            db.UpdateGraph(new Db.Post { Name = "New Bob" });
+            Establish context = () => {
+                using (var db = Db.CreateInMemory())
+                {
+                    var blogger = new Db.Blogger { Name = "Bob" };
+                    var blogger2 = new Db.Blogger { Name = "Bob2" };
+                    var post = new Db.Post() { Name = "Name", Blogger = blogger };
+                    db.Add(blogger);
+                    db.Add(blogger2);
+                    db.Add(post);
 
-        //            db.SaveChanges();
-        //        }
-        //    };
+                    db.SaveChanges();
 
-        //    Because of = () => {
-        //        using (var db = Db.CreateInMemory()) _post = db.Posts.Single(p => p.Id == postId);
-        //    };
+                    postId = post.Id;
+                }
+            };
 
-        //    It Should_Update_Properties = () => _post.Name.ShouldEqual("Changed Bob");
-        //}
+            Because of = () => {
+                using (var db = Db.CreateInMemory())
+                {
+                    var blogger2 = db.Bloggers.Single(b => b.Name == "Bob2");
+                    db.UpdateGraph(new Db.Post { Id = postId, Name = "Name", Blogger = blogger2 }, o => o.NonOwnedReference(p => p.Blogger));
+
+                    db.SaveChanges();
+                }
+                using (var db = Db.CreateInMemory()) _post = db.Posts.Include(p => p.Blogger).Single(p => p.Id == postId);
+            };
+
+            It Should_change_the_relationship = () => _post.Blogger.Name.ShouldEqual("Bob2");
+
+            It Should_not_update_properties = () => _post.Name.ShouldEqual("Name");
+        }
+
+        public class When_updating_a_relationship_without_tracked
+        {
+            static int postId;
+            static int bloggerId;
+            static Db.Post _post;
+
+            Establish context = () => {
+                using (var db = Db.CreateInMemory())
+                {
+                    var blogger = new Db.Blogger { Name = "Bob" };
+                    var blogger2 = new Db.Blogger { Name = "Bob2" };
+                    var post = new Db.Post() { Name = "Name", Blogger = blogger };
+                    db.Add(blogger);
+                    db.Add(blogger2);
+                    db.Add(post);
+
+                    db.SaveChanges();
+
+                    postId = post.Id;
+                    bloggerId = blogger2.Id;
+                }
+            };
+
+            Because of = () => {
+                using (var db = Db.CreateInMemory())
+                {
+                    db.UpdateGraph(new Db.Post { Id = postId, Name = "Name", Blogger = new Db.Blogger {Id = bloggerId} },
+                        o => o.NonOwnedReference(p => p.Blogger));
+
+                    db.SaveChanges();
+                }
+                using (var db = Db.CreateInMemory()) _post = db.Posts.Include(p => p.Blogger).Single(p => p.Id == postId);
+            };
+
+            It Should_change_the_relationship = () => _post.Blogger.Name.ShouldEqual("Bob2");
+
+            It Should_not_update_properties = () => _post.Name.ShouldEqual("Name");
+        }
     }
 }
