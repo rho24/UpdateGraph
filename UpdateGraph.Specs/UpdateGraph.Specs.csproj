@@ -115,6 +115,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EfMemorySpecs.cs" />
+    <Compile Include="NonOwnedRelationshipSpecs.cs" />
     <Compile Include="NotRelationshipsSpecs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
