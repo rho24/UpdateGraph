@@ -1,7 +1,8 @@
 NUGET
   remote: https://www.nuget.org/api/v2
   specs:
-    GitVersionTask (3.1.0) - framework: >= net452
+    GitVersion.CommandLine (3.1.0) - framework: >= net452
+    GitVersionTask (3.1.0)
     Machine.Specifications (0.9.3) - framework: >= net452
     Machine.Specifications.Should (0.7.2) - framework: >= net452
       Machine.Specifications (>= 0.7 < 1.0)
